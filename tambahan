@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# === KONFIGURASI BARU YANG AKAN DITAMBAHKAN ===
+INTERFACE="eth0"
+NEW_PREFIX="5.230.79"               # Ganti prefix baru yang ingin ditambahkan
+START=2                             # IP awal
+END=61                              # IP akhir
+EXCLUDE=(10 20 30)                  # IP akhir yang dikecualikan
+PORT_START=3200                     # Port awal untuk range baru
+USERNAME="vodkaace"
+PASSWORD="indonesia"
+PASSWD_FILE="/etc/squid/passwd"
+SQUID_CONF="/etc/squid/squid.conf"
+HASIL_FILE="hasil.txt"
+
+# === FUNGSI CEK EXCLUDE ===
+is_excluded() {
+    local num=$1
+    for ex in "${EXCLUDE[@]}"; do
+        if [[ "$num" -eq "$ex" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# === CEK INTERFACE ===
+if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
+    echo "[!] Interface $INTERFACE tidak ditemukan. Periksa kembali." >&2
+    exit 1
+fi
+
+# === TAMBAH IP BARU KE INTERFACE ===
+echo "[+] Menambahkan IP $NEW_PREFIX.$START sampai $NEW_PREFIX.$END ke $INTERFACE ..."
+for i in $(seq $START $END); do
+    if is_excluded "$i"; then
+        echo "[!] Melewati IP $NEW_PREFIX.$i (dikecualikan)"
+        continue
+    fi
+    IP="$NEW_PREFIX.$i"
+    if ! ip addr show dev $INTERFACE | grep -q "$IP"; then
+        sudo ip addr add "$IP/26" dev $INTERFACE
+    fi
+done
+
+# === TULIS KONFIGURASI KE squid.conf ===
+echo "[+] Menambahkan konfigurasi baru ke $SQUID_CONF ..."
+for i in $(seq $START $END); do
+    if is_excluded "$i"; then
+        continue
+    fi
+    PORT=$((PORT_START + i - START))
+    IP="$NEW_PREFIX.$i"
+    echo "http_port $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
+    echo "acl to${NEW_PREFIX//./}_$i myport $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
+    echo "tcp_outgoing_address $IP to${NEW_PREFIX//./}_$i" | sudo tee -a "$SQUID_CONF" > /dev/null
+    echo "" | sudo tee -a "$SQUID_CONF" > /dev/null
+done
+
+# === BUKA FIREWALL JIKA UFW AKTIF ===
+if command -v ufw > /dev/null && sudo ufw status | grep -q "Status: active"; then
+    echo "[+] Membuka port baru di firewall ..."
+    for i in $(seq $START $END); do
+        if is_excluded "$i"; then
+            continue
+        fi
+        PORT=$((PORT_START + i - START))
+        sudo ufw allow "$PORT/tcp" comment "Allow Squid port $PORT (prefix $NEW_PREFIX)"
+    done
+fi
+
+# === TULIS KE HASIL.TXT ===
+echo "[+] Menyimpan hasil tambahan ke $HASIL_FILE ..."
+for i in $(seq $START $END); do
+    if is_excluded "$i"; then
+        continue
+    fi
+    PORT=$((PORT_START + i - START))
+    IP="$NEW_PREFIX.$i"
+    echo "$USERNAME:$PASSWORD:$IP:$PORT" >> "$HASIL_FILE"
+done
+
+# === RESTART SQUID ===
+echo "[+] Restart Squid ..."
+sudo systemctl restart squid
+
+echo "✅ Prefix baru $NEW_PREFIX.$START–$END berhasil ditambahkan."
