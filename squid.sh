@@ -2,17 +2,17 @@
 
 # === CONFIGURASI ===
 INTERFACE="eth0"                     # Ganti sesuai interface kamu (cek dengan `ip a`)
-IP_PREFIX="77.90.34"                 # Prefix dari subnet kamu
-START=9                             # Awal range IP
-END=92                               # Akhir range IP
-EXCLUDE=(98 99)                   # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
+IP_PREFIX="5.230.84"                 # Prefix dari subnet kamu
+START=2                             # Awal range IP
+END=62                               # Akhir range IP
+EXCLUDE=(31 99)                   # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
 PORT_START=3128                      # Port pertama untuk Squid (akan naik terus)
 USERNAME="vodkaace"
 PASSWORD="indonesia"
 PASSWD_FILE="/etc/squid/passwd"
 SQUID_CONF="/etc/squid/squid.conf"
 HASIL_FILE="hasil.txt"
-NETMASKS="24"
+NETMASKS="26"
 # === FUNGSI UNTUK CEK APAKAH ANGKA ADA DI EXCLUDE ===
 is_excluded() {
     local num=$1
