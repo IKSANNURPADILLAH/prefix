@@ -10,11 +10,11 @@ SQUID_CONF="/etc/squid/squid.conf"
 HASIL_FILE="hasil.txt"
 
 # === KONFIGURASI PREFIX MULTI ===
-PREFIXES=("5.230.90" "85.118.160")
-STARTS=(194 2)
-ENDS=(254 62)
-EXCLUDES=("70 80 88" "10 11")
-NETMASKS=(24 26)                   #sesuaikan /prefix nya
+PREFIXES=("5.231.219" "178.18.145")
+STARTS=(34 66)
+ENDS=(62 94)
+EXCLUDES=("100" "100")
+NETMASKS=(27 27)                   #sesuaikan /prefix nya
 
 # === FUNGSI CEK EXCLUDE ===
 is_excluded() {
