@@ -2,10 +2,10 @@
 
 # === CONFIGURASI ===
 INTERFACE="eth0"                     # Ganti sesuai interface kamu (cek dengan `ip a`)
-IP_PREFIX="5.230.48"                 # Prefix dari subnet kamu
-START=66                             # Awal range IP
-END=94                               # Akhir range IP
-EXCLUDE=(72 80 88)                   # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
+IP_PREFIX="5.230.90"                 # Prefix dari subnet kamu
+START=194                             # Awal range IP
+END=254                               # Akhir range IP
+EXCLUDE=(70 80 88)                   # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
 PORT_START=3128                      # Port pertama untuk Squid (akan naik terus)
 USERNAME="vodkaace"
 PASSWORD="indonesia"
@@ -117,11 +117,22 @@ for i in $(seq $START $END); do
     IP="$IP_PREFIX.$i"
     echo "$USERNAME:$PASSWORD:$IP:$PORT" >> "$HASIL_FILE"
 done
+# Buat direktori override systemd untuk Squid
+sudo mkdir -p /etc/systemd/system/squid.service.d
 
-# === RESTART SQUID ===
+# Buat file override limit
+cat <<EOF | sudo tee /etc/systemd/system/squid.service.d/override.conf
+[Service]
+LimitNOFILE=65535
+EOF
+
 echo "[+] Restart Squid ..."
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
 sudo systemctl restart squid
 
+# Tampilkan limit file descriptor Squid sekarang
+echo "Cek limit file descriptor Squid:"
+cat /proc/$(pidof squid)/limits | grep "Max open files"
 echo "✅ Setup selesai! Proxy siap digunakan."
-echo "Gunakan format: http://$USERNAME:$PASSWORD@<server-ip>:<port>"
 echo "📄 Hasil disimpan di: $HASIL_FILE"
