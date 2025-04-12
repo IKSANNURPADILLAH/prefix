@@ -12,7 +12,7 @@ PASSWORD="indonesia"
 PASSWD_FILE="/etc/squid/passwd"
 SQUID_CONF="/etc/squid/squid.conf"
 HASIL_FILE="hasil.txt"
-
+NETMASKS="26"
 # === FUNGSI UNTUK CEK APAKAH ANGKA ADA DI EXCLUDE ===
 is_excluded() {
     local num=$1
@@ -39,7 +39,7 @@ for i in $(seq $START $END); do
     fi
     IP="$IP_PREFIX.$i"
     if ! ip addr show dev $INTERFACE | grep -q "$IP"; then
-        sudo ip addr add "$IP/26" dev $INTERFACE
+        sudo ip addr add "$IP/$NETMASKS" dev $INTERFACE
     fi
 done
 
