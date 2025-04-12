@@ -31,7 +31,7 @@ if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
 fi
 
 # === TAMBAHKAN IP KE INTERFACE ===
-echo "[+] Menambahkan IP ke interface $INTERFACE ..."
+echo "[+] Menambahkan IP ke interface $INTERFACE"
 for i in $(seq $START $END); do
     if is_excluded "$i"; then
         echo "[!] Melewati IP $IP_PREFIX.$i (dikecualikan)"
@@ -44,12 +44,12 @@ for i in $(seq $START $END); do
 done
 
 # === INSTALL PAKET YANG DIBUTUHKAN ===
-echo "[+] Menginstall Squid dan Apache utils ..."
+echo "[+] Menginstall Squid dan Apache utils"
 sudo apt update
 sudo apt install squid apache2-utils -y
 
 # === SETUP AUTH USER ===
-echo "[+] Menambahkan user proxy $USERNAME ..."
+echo "[+] Menambahkan user proxy $USERNAME"
 if [ ! -f "$PASSWD_FILE" ]; then
     sudo htpasswd -cb "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
 else
@@ -57,11 +57,11 @@ else
 fi
 
 # === BACKUP CONFIG LAMA ===
-echo "[+] Membackup konfigurasi Squid lama ..."
+echo "[+] Membackup konfigurasi Squid lama"
 sudo cp "$SQUID_CONF" "$SQUID_CONF.bak.$(date +%s)"
 
 # === BUAT KONFIGURASI BARU ===
-echo "[+] Menulis konfigurasi baru ke $SQUID_CONF ..."
+echo "[+] Menulis konfigurasi baru ke $SQUID_CONF"
 sudo tee "$SQUID_CONF" > /dev/null <<EOF
 # === AUTHENTIKASI ===
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
@@ -95,7 +95,7 @@ done
 
 # === BUKA FIREWALL (JIKA UFW AKTIF) ===
 if command -v ufw > /dev/null && sudo ufw status | grep -q "Status: active"; then
-    echo "[+] Membuka port di firewall (UFW) ..."
+    echo "[+] Membuka port di firewall (UFW)"
     for i in $(seq $START $END); do
         if is_excluded "$i"; then
             continue
@@ -106,7 +106,7 @@ if command -v ufw > /dev/null && sudo ufw status | grep -q "Status: active"; the
 fi
 
 # === SIMPAN HASIL KE FILE ===
-echo "[+] Menyimpan hasil konfigurasi ke $HASIL_FILE ..."
+echo "[+] Menyimpan hasil konfigurasi ke $HASIL_FILE"
 : > "$HASIL_FILE"  # Kosongkan isi file hasil.txt jika sudah ada sebelumnya
 
 for i in $(seq $START $END); do
@@ -126,10 +126,28 @@ cat <<EOF | sudo tee /etc/systemd/system/squid.service.d/override.conf
 LimitNOFILE=65535
 EOF
 
-echo "[+] Restart Squid ..."
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl restart squid
+echo "[+] Restarting Squid"
+echo -n "Loading"
+loading_animation() {
+    local pid=$1
+    local delay=0.1
+    local spin='|/-\'
+
+    while ps -p $pid > /dev/null; do
+        for i in $(seq 0 3); do
+            echo -ne "\rLoading ${spin:$i:1}"
+            sleep $delay
+        done
+    done
+    echo -ne "\r[+] Restart Squid Done     \n"
+}
+
+(
+    sudo systemctl daemon-reexec
+    sudo systemctl daemon-reload
+    sudo systemctl restart squid
+) &
+loading_animation $!
 
 # Tampilkan limit file descriptor Squid sekarang
 echo "Cek limit file descriptor Squid:"
