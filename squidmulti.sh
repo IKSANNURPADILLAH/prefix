@@ -59,8 +59,8 @@ done
 
 # === INSTALL PAKET ===
 echo "[+] Menginstall Squid dan Apache utils" | lolcat
-sudo apt update | lolcat
-sudo apt install squid apache2-utils -y | lolcat
+sudo apt update
+sudo apt install squid apache2-utils -y
 
 # === SETUP AUTH USER ===
 echo "[+] Menambahkan user proxy $USERNAME" | lolcat
