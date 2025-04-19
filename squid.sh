@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# === install lolcat ===
+apt install lolcat -y
 # === CONFIGURASI ===
 INTERFACE="eth0"                      # Ganti sesuai interface kamu (cek dengan `ip a`)
 IP_PREFIX="94.249.210"                 # Prefix dari subnet kamu
@@ -31,7 +32,7 @@ if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
 fi
 
 # === TAMBAHKAN IP KE INTERFACE ===
-echo "[+] Menambahkan IP ke interface $INTERFACE"
+echo "[+] Menambahkan IP ke interface $INTERFACE" | lolcat
 for i in $(seq $START $END); do
     if is_excluded "$i"; then
         echo "[!] Melewati IP $IP_PREFIX.$i (dikecualikan)"
@@ -44,12 +45,12 @@ for i in $(seq $START $END); do
 done
 
 # === INSTALL PAKET YANG DIBUTUHKAN ===
-echo "[+] Menginstall Squid dan Apache utils"
-sudo apt update
-sudo apt install squid apache2-utils -y
+echo "[+] Menginstall Squid dan Apache utils" | lolcat
+sudo apt update | lolcat
+sudo apt install squid apache2-utils -y | lolcat
 
 # === SETUP AUTH USER ===
-echo "[+] Menambahkan user proxy $USERNAME"
+echo "[+] Menambahkan user proxy $USERNAME" | lolcat
 if [ ! -f "$PASSWD_FILE" ]; then
     sudo htpasswd -cb "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
 else
@@ -57,11 +58,11 @@ else
 fi
 
 # === BACKUP CONFIG LAMA ===
-echo "[+] Membackup konfigurasi Squid lama"
+echo "[+] Membackup konfigurasi Squid lama" | lolcat
 sudo cp "$SQUID_CONF" "$SQUID_CONF.bak.$(date +%s)"
 
 # === BUAT KONFIGURASI BARU ===
-echo "[+] Menulis konfigurasi baru ke $SQUID_CONF"
+echo "[+] Menulis konfigurasi baru ke $SQUID_CONF" | lolcat
 sudo tee "$SQUID_CONF" > /dev/null <<EOF
 # === AUTHENTIKASI ===
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
@@ -106,7 +107,7 @@ if command -v ufw > /dev/null && sudo ufw status | grep -q "Status: active"; the
 fi
 
 # === SIMPAN HASIL KE FILE ===
-echo "[+] Menyimpan hasil konfigurasi ke $HASIL_FILE"
+echo "[+] Menyimpan hasil konfigurasi ke $HASIL_FILE" | lolcat
 : > "$HASIL_FILE"  # Kosongkan isi file hasil.txt jika sudah ada sebelumnya
 
 for i in $(seq $START $END); do
@@ -150,7 +151,7 @@ loading_animation() {
 loading_animation $!
 
 # Tampilkan limit file descriptor Squid sekarang
-echo "Cek limit file descriptor Squid:"
+echo "Cek limit file descriptor Squid:" | lolcat
 cat /proc/$(pidof squid)/limits | grep "Max open files"
-echo "✅ Setup selesai! Proxy siap digunakan."
-echo "📄 Hasil disimpan di: $HASIL_FILE"
+echo "✅ Setup selesai! Proxy siap digunakan." | lolcat
+echo "📄 Hasil disimpan di: $HASIL_FILE" | lolcat
