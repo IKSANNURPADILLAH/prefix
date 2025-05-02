@@ -23,8 +23,8 @@ max_filedescriptors 65535
 EOF
 
 # Buat user untuk autentikasi
-USERNAME="proxyuser"
-PASSWORD="proxypass"
+USERNAME="vodkaace"
+PASSWORD="indonesia"
 htpasswd -b -c /etc/squid/passwd $USERNAME $PASSWORD
 
 # Buat systemd override untuk LimitNOFILE
