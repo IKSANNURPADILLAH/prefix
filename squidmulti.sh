@@ -12,7 +12,7 @@ HASIL_FILE="hasil.txt"
 PREFIXES=("5.230.21" "94.249.210")
 STARTS=(2 113)
 ENDS=(30 126)
-EXCLUDES=("8 9 10" "127 128")     # Dukung banyak IP per prefix
+EXCLUDES=("8 31" "127 128")     # Dukung banyak IP per prefix
 NETMASKS=(27 24)                  # Sesuaikan /prefix-nya
 
 # === FUNGSI CEK EXCLUDE ===
