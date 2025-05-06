@@ -1,10 +1,10 @@
 #!/bin/bash
 # === CONFIGURASI ===
 INTERFACE="eth0"                      # Ganti sesuai interface kamu (cek dengan `ip a`)
-IP_PREFIX="94.249.210"                 # Prefix dari subnet kamu
-START=65                               # Awal range IP
-END=112                               # Akhir range IP
-EXCLUDE=(113)                       # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
+IP_PREFIX="89.144.50"                 # Prefix dari subnet kamu
+START=0                               # Awal range IP
+END=256                               # Akhir range IP
+EXCLUDE=(256)                       # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
 PORT_START=3128                       # Port pertama untuk Squid (akan naik terus)
 USERNAME="vodkaace"                   # Username Squid
 PASSWORD="indonesia"                  # Password squid
