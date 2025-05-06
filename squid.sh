@@ -114,7 +114,7 @@ for i in $(seq $START $END); do
     fi
     PORT=$((PORT_START + i - START))
     IP="$IP_PREFIX.$i"
-    echo "$USERNAME:$PASSWORD:$IP:$PORT" >> "$HASIL_FILE"
+    echo "$USERNAME:$PASSWORD@$IP:$PORT" >> "$HASIL_FILE"
 done
 # Buat direktori override systemd untuk Squid
 sudo mkdir -p /etc/systemd/system/squid.service.d
