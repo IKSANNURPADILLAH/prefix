@@ -2,7 +2,7 @@
 # === CONFIGURASI ===
 INTERFACE="eth0"                      # Ganti sesuai interface kamu (cek dengan `ip a`)
 IP_PREFIX="89.144.50"                 # Prefix dari subnet kamu
-START=129                               # Awal range IP
+START=0                               # Awal range IP
 END=255                               # Akhir range IP
 EXCLUDE=(255)                       # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
 PORT_START=3128                       # Port pertama untuk Squid (akan naik terus)
