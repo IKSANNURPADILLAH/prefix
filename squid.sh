@@ -1,7 +1,7 @@
 #!/bin/bash
 # === CONFIGURASI ===
 INTERFACE="eth0"                      # Ganti sesuai interface kamu (cek dengan `ip a`)
-IP_PREFIX="89.144.50"                 # Prefix dari subnet kamu
+IP_PREFIX="89.144.7"                 # Prefix dari subnet kamu
 START=0                               # Awal range IP
 END=255                               # Akhir range IP
 EXCLUDE=(255)                       # IP akhir yang ingin dikecualikan, misal: 5.230.48.72, .80, .88
