@@ -10,7 +10,7 @@ set -euo pipefail
 INTERFACE="eth0"
 IP_PREFIX="89.144.7"
 START=0
-END=255
+END=127
 PORT_START=3128
 USERNAME="vodkaace"
 PASSWORD="indonesia"
