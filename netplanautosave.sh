@@ -85,14 +85,14 @@ acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 EOF
 
-# Listener & outgoing IP
+#ubah
 for i in {2..254}; do
-  echo "http_port 94.249.191.$i:3128" >> $SQUID_CONF
+  echo "http_port 89.144.7.$i:3128" >> $SQUID_CONF
 done
 
 for i in {2..254}; do
-  echo "acl ip$i myip 94.249.191.$i" >> $SQUID_CONF
-  echo "tcp_outgoing_address 94.249.191.$i ip$i" >> $SQUID_CONF
+  echo "acl ip$i myip 89.144.7.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 89.144.7.$i ip$i" >> $SQUID_CONF
 done
 
 # Tambahan akhir konfigurasi
