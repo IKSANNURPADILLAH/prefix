@@ -44,25 +44,18 @@ for i in {1..254}; do
   echo "      - 89.144.7.$i/24" >> /etc/netplan/89-ips.yaml
 done
 
-# Set permissions agar tidak terlalu terbuka
 chmod 600 /etc/netplan/89-ips.yaml
-
-# Terapkan Netplan
-echo "Terapkan Netplan..."
 netplan apply
 
-# 3. Install Squid dan Apache Utils (untuk htpasswd)
+# 3. Install Squid dan htpasswd
 echo "Menginstall Squid dan Apache2-utils..."
 apt update && apt install -y squid apache2-utils
 
-# 4. Atur batas file descriptor untuk sistem
-echo "Meningkatkan batas file descriptor..."
+# 4. Optimasi sistem untuk banyak koneksi
+echo "Meningkatkan batas file descriptor dan parameter kernel..."
 
 echo "* soft nofile 65535" >> /etc/security/limits.conf
 echo "* hard nofile 65535" >> /etc/security/limits.conf
-
-# Atur kernel parameters untuk mendukung koneksi banyak
-echo "Mengatur parameter kernel untuk koneksi tinggi..."
 
 cat >> /etc/sysctl.conf <<EOF
 fs.file-max = 100000
@@ -70,14 +63,13 @@ net.ipv4.ip_local_port_range = 1024 65535
 net.core.somaxconn = 65535
 EOF
 
-# Terapkan pengaturan sysctl
 sysctl -p
 
-# 5. Membuat file password untuk Squid
+# 5. Buat user Squid
 echo "Membuat user proxy vodkaace..."
 htpasswd -b -c /etc/squid/passwd vodkaace indonesia
 
-# 6. Konfigurasi Squid untuk menangani banyak koneksi
+# 6. Konfigurasi Squid
 echo "Mengkonfigurasi Squid..."
 
 SQUID_CONF="/etc/squid/squid.conf"
@@ -94,34 +86,22 @@ acl localnet src 0.0.0.0/0
 http_access allow localnet
 http_access deny all
 
-# Tampilkan IP publik yang digunakan
 via off
 forwarded_for delete
 
-# Meningkatkan jumlah file descriptor yang dapat dibuka oleh Squid
+# Optimasi performa Squid
 max_filedescriptors 65535
-
-# Alokasi memori untuk cache
 cache_mem 256 MB
-
-# Menangani banyak koneksi
 maximum_object_size_in_memory 8 KB
 cache_dir ufs /var/spool/squid 1000 16 256
-
-# Mengatur jumlah koneksi per peer
-tcp_outgoing_address 89.144.7.1
-
-# Menyesuaikan waktu timeout
 connect_timeout 30 seconds
 request_timeout 30 seconds
 read_timeout 30 seconds
 EOF
 
-# 7. Restart Squid dan aktifkan agar berjalan otomatis saat boot
+# 7. Restart dan aktifkan Squid
 echo "Restarting Squid..."
 systemctl restart squid
 systemctl enable squid
 
-# 8. Menampilkan informasi selesai
-echo "Selesai! Proxy Anda berjalan di port 3128 dengan IP 89.144.7.1 - 89.144.7.254."
-echo "Proses instalasi dan konfigurasi telah selesai."
+echo "✅ Selesai! Squid proxy aktif di port 3128 dan siap menangani 200+ koneksi."
