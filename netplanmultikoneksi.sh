@@ -17,10 +17,10 @@ network:
     ethernets:
         eth0:
             addresses:
-            - 5.230.232.129/24
+            - 5.230.198.126/24
             routes:
               - to: 0.0.0.0/0
-                via: 5.230.232.1
+                via: 5.230.198.1
                 on-link: true
             nameservers:
                 addresses:
