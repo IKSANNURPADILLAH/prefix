@@ -24,10 +24,10 @@ network:
     ethernets:
         eth0:
             addresses:
-            - 5.230.197.127/24
+            - 5.230.72.15/24
             routes:
               - to: 0.0.0.0/0
-                via: 5.230.197.1
+                via: 5.230.72.1
                 on-link: true
             nameservers:
                 addresses:
@@ -46,8 +46,8 @@ network:
       addresses:
 EOF
 
-for i in {2..254}; do
-  echo "      - 94.249.191.$i/24" >> $NETPLAN_ALIAS
+for i in {0..255}; do
+  echo "      - 89.144.7.$i/24" >> $NETPLAN_ALIAS
 done
 
 chmod 600 $NETPLAN_ALIAS
