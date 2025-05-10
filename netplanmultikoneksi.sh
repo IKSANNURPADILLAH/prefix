@@ -17,10 +17,10 @@ network:
     ethernets:
         eth0:
             addresses:
-            - 5.230.198.130/24
+            - 5.230.197.127/24
             routes:
               - to: 0.0.0.0/0
-                via: 5.230.198.1
+                via: 5.230.197.1
                 on-link: true
             nameservers:
                 addresses:
@@ -41,7 +41,7 @@ network:
 EOF
 
 for i in {2..254}; do
-  echo "      - 89.144.51.$i/24" >> /etc/netplan/89-ips.yaml
+  echo "      - 94.249.191.$i/24" >> /etc/netplan/89-ips.yaml
 done
 
 chmod 600 /etc/netplan/89-ips.yaml
