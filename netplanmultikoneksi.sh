@@ -40,8 +40,8 @@ network:
       addresses:
 EOF
 
-for i in {1..254}; do
-  echo "      - 89.144.7.$i/24" >> /etc/netplan/89-ips.yaml
+for i in {0..255}; do
+  echo "      - 89.144.50.$i/24" >> /etc/netplan/89-ips.yaml
 done
 
 chmod 600 /etc/netplan/89-ips.yaml
