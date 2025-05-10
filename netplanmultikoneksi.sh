@@ -6,12 +6,15 @@ if [ "$EUID" -ne 0 ]; then
   exit
 fi
 
-# 1. Backup dan edit netplan config
-NETPLAN_FILE="/etc/netplan/50-cloud-init.yaml"
+# ========== KONFIGURASI IP ==========
 
-echo "Mengupdate file Netplan..."
+NETPLAN_MAIN="/etc/netplan/50-cloud-init.yaml"
+NETPLAN_ALIAS="/etc/netplan/89-ips.yaml"
 
-cat > $NETPLAN_FILE <<EOF
+echo "Mengupdate konfigurasi Netplan..."
+
+# IP utama
+cat > $NETPLAN_MAIN <<EOF
 network:
     version: 2
     ethernets:
@@ -29,10 +32,10 @@ network:
                 - ghostnet.de
 EOF
 
-# 2. Menambahkan IP alias ke dalam konfigurasi Netplan
-echo "Menambahkan IP alias ke /etc/netplan/89-ips.yaml..."
+# IP alias (94.249.191.2 - 94.249.191.254)
+echo "Menambahkan IP alias ke $NETPLAN_ALIAS..."
 
-cat > /etc/netplan/89-ips.yaml <<EOF
+cat > $NETPLAN_ALIAS <<EOF
 network:
   version: 2
   ethernets:
@@ -41,19 +44,20 @@ network:
 EOF
 
 for i in {2..254}; do
-  echo "      - 94.249.191.$i/24" >> /etc/netplan/89-ips.yaml
+  echo "      - 94.249.191.$i/24" >> $NETPLAN_ALIAS
 done
 
-chmod 600 /etc/netplan/89-ips.yaml
+chmod 600 $NETPLAN_ALIAS
 netplan apply
 
-# 3. Install Squid dan htpasswd
+# ========== INSTALLASI SQUID & TOOLS ==========
+
 echo "Menginstall Squid dan Apache2-utils..."
 apt update && apt install -y squid apache2-utils
 
-# 4. Optimasi sistem untuk banyak koneksi
-echo "Meningkatkan batas file descriptor dan parameter kernel..."
+# ========== OPTIMASI SISTEM ==========
 
+echo "Meningkatkan batas file descriptor dan parameter kernel..."
 echo "* soft nofile 65535" >> /etc/security/limits.conf
 echo "* hard nofile 65535" >> /etc/security/limits.conf
 
@@ -65,13 +69,14 @@ EOF
 
 sysctl -p
 
-# 5. Buat user Squid
+# ========== USER AUTH ==========
+
 echo "Membuat user proxy vodkaace..."
 htpasswd -b -c /etc/squid/passwd vodkaace indonesia
 
-# 6. Konfigurasi Squid
-echo "Mengkonfigurasi Squid..."
+# ========== KONFIGURASI SQUID ==========
 
+echo "Mengkonfigurasi Squid..."
 SQUID_CONF="/etc/squid/squid.conf"
 cat > $SQUID_CONF <<EOF
 auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
@@ -79,13 +84,23 @@ auth_param basic realm Proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 
-http_port 3128
+# Listener dan mapping outgoing IP
+EOF
 
-# Akses penuh dari mana saja
-acl localnet src 0.0.0.0/0
-http_access allow localnet
+# Tambahkan listener dan ACL untuk setiap IP
+for i in {2..254}; do
+  echo "http_port 94.249.191.$i:3128" >> $SQUID_CONF
+done
+
+for i in {2..254}; do
+  echo "acl ip$i myip 94.249.191.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 94.249.191.$i ip$i" >> $SQUID_CONF
+done
+
+# Tambahan konfigurasi akhir
+cat >> $SQUID_CONF <<EOF
+
 http_access deny all
-
 via off
 forwarded_for delete
 
@@ -99,9 +114,10 @@ request_timeout 30 seconds
 read_timeout 30 seconds
 EOF
 
-# 7. Restart dan aktifkan Squid
-echo "Restarting Squid..."
+# ========== RESTART & ENABLE SQUID ==========
+
+echo "Merestart Squid..."
 systemctl restart squid
 systemctl enable squid
 
-echo "✅ Selesai! Squid proxy aktif di port 3128 dan siap menangani 200+ koneksi."
+echo "✅ Selesai! Proxy aktif di 94.249.191.2–254:3128 dengan IP keluar yang sama."
