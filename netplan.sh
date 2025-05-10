@@ -1,99 +1,89 @@
 #!/bin/bash
 
-# =============================
-# Konfigurasi awal
-# =============================
-INTERFACE=$(ip route | grep default | awk '{print $5}')
-SUBNET="89.144.7"
-NETMASK="24"
-USERNAME="vodkaace"
-PASSWORD="indonesia"
-SQUID_CONF="/etc/squid/squid.conf"
-PASSWD_FILE="/etc/squid/passwd"
-OUTPUT_FILE="/root/hasil.txt"
-SQUID_OVERRIDE_DIR="/etc/systemd/system/squid.service.d"
-LIMIT_NOFILE=65535
-
-# =============================
-# Update & install dependencies
-# =============================
-apt update && apt install -y squid apache2-utils net-tools
-
-# =============================
-# Update konfigurasi Netplan
-# =============================
-NETPLAN_FILE=$(find /etc/netplan -name "*.yaml" | head -n 1)
-cp "$NETPLAN_FILE" "${NETPLAN_FILE}.bak"
-
-echo "Mengupdate Netplan..."
-IPS=""
-for i in $(seq 2 254); do
-    IPS+="      - ${SUBNET}.${i}/32\n"
-done
-
-if ! grep -q "${SUBNET}" "$NETPLAN_FILE"; then
-    sed -i "/addresses:/a\\${IPS}" "$NETPLAN_FILE"
+# Jalankan hanya sebagai root
+if [ "$EUID" -ne 0 ]; then
+  echo "Jalankan sebagai root."
+  exit
 fi
 
+# 1. Backup dan edit netplan config
+NETPLAN_FILE="/etc/netplan/50-cloud-init.yaml"
+
+echo "Mengupdate file Netplan..."
+
+cat > $NETPLAN_FILE <<EOF
+network:
+    version: 2
+    ethernets:
+        eth0:
+            addresses:
+            - 5.230.232.129/24
+            routes:
+              - to: 0.0.0.0/0
+                via: 5.230.232.1
+                on-link: true
+            nameservers:
+                addresses:
+                - 8.8.8.8
+                search:
+                - ghostnet.de
+EOF
+
+# 2. Menambahkan IP alias ke dalam konfigurasi Netplan
+echo "Menambahkan IP alias ke /etc/netplan/89-ips.yaml..."
+
+cat > /etc/netplan/89-ips.yaml <<EOF
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses:
+EOF
+
+for i in {1..254}; do
+  echo "      - 89.144.7.$i/24" >> /etc/netplan/89-ips.yaml
+done
+
+# Set permissions agar tidak terlalu terbuka
+chmod 600 /etc/netplan/89-ips.yaml
+
+# Terapkan Netplan
+echo "Terapkan Netplan..."
 netplan apply
-echo "Netplan diterapkan."
 
-# =============================
-# Setup file passwd untuk squid
-# =============================
-htpasswd -bc "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
+# 3. Install Squid
+echo "Menginstall Squid..."
+apt update && apt install -y squid apache2-utils
 
-# =============================
-# Konfigurasi squid multi-port
-# =============================
-cp "$SQUID_CONF" "${SQUID_CONF}.bak"
+# 4. Buat file password untuk Squid
+echo "Membuat user proxy vodkaace..."
+htpasswd -b -c /etc/squid/passwd vodkaace indonesia
 
-cat > "$SQUID_CONF" <<EOF
-auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
+# 5. Konfigurasi Squid
+echo "Mengkonfigurasi Squid..."
+
+SQUID_CONF="/etc/squid/squid.conf"
+cat > $SQUID_CONF <<EOF
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
 auth_param basic realm Proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
-EOF
 
-PORT=3128
-> "$OUTPUT_FILE"
-for i in $(seq 2 254); do
-    echo "http_port ${SUBNET}.${i}:${PORT}" >> "$SQUID_CONF"
-    echo "${SUBNET}.${i}:${PORT}@${USERNAME}:${PASSWORD}" >> "$OUTPUT_FILE"
-    ((PORT++))
-done
+http_port 3128
 
-cat >> "$SQUID_CONF" <<EOF
+# Akses penuh dari mana saja
+acl localnet src 0.0.0.0/0
+http_access allow localnet
+http_access deny all
+
+# Tampilkan IP publik yang digunakan
 via off
-forwarded_for off
-max_filedescriptors $LIMIT_NOFILE
-cache_mem 64 MB
-memory_replacement_policy lru
-maximum_object_size_in_memory 64 KB
+forwarded_for delete
 EOF
 
-# =============================
-# Tuning ulimit & systemd
-# =============================
-echo "Menyesuaikan limit koneksi..."
-
-# Tambahkan limit untuk user squid
-if ! grep -q "squid" /etc/security/limits.conf; then
-    echo -e "squid soft nofile $LIMIT_NOFILE\nsquid hard nofile $LIMIT_NOFILE" >> /etc/security/limits.conf
-fi
-
-# Tambahkan override systemd
-mkdir -p "$SQUID_OVERRIDE_DIR"
-cat > "$SQUID_OVERRIDE_DIR/override.conf" <<EOF
-[Service]
-LimitNOFILE=$LIMIT_NOFILE
-EOF
-
-# Reload systemd dan restart squid
-systemctl daemon-reexec
-systemctl daemon-reload
-systemctl enable squid
+# 6. Restart Squid
+echo "Restarting Squid..."
 systemctl restart squid
+systemctl enable squid
 
-echo -e "\n✅ Proxy selesai di-setup dan siap menangani 200+ koneksi!"
-echo "📄 Daftar proxy tersimpan di: $OUTPUT_FILE"
+echo "Selesai! Proxy Anda berjalan di port 3128 dengan IP 89.144.7.1 - 89.144.7.254."
