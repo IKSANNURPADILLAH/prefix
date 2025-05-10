@@ -46,7 +46,7 @@ network:
       addresses:
 EOF
 
-for i in {0..255}; do
+for i in {2..254}; do
   echo "      - 89.144.7.$i/24" >> $NETPLAN_ALIAS
 done
 
