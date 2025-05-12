@@ -24,10 +24,10 @@ network:
     ethernets:
         eth0:
             addresses:
-            - 5.230.233.139/24
+            - 5.230.232.136/24
             routes:
               - to: 0.0.0.0/0
-                via: 5.230.233.1
+                via: 5.230.232.1
                 on-link: true
             nameservers:
                 addresses:
@@ -117,7 +117,7 @@ EOF
 echo "Menyimpan daftar proxy ke $PROXY_TXT..."
 > $PROXY_TXT
 for i in {2..254}; do
-  echo "http://$USER:$PASS@94.249.191.$i:3128" >> $PROXY_TXT
+  echo "http://$USER:$PASS@94.249.215.$i:3128" >> $PROXY_TXT
 done
 
 # ========= RESTART SQUID =========
