@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===== CONFIGURATION =====
-LISTEN_PORT=443
+LISTEN_PORT=80
 POOL_HOST="us.cortex.herominers.com"
 POOL_PORT=1155
 SERVICE_NAME="socat-mining"
