@@ -8,9 +8,9 @@ set -euo pipefail
 
 # === CONFIGURASI ===
 INTERFACE="eth0"
-IP_PREFIX="94.249.215"
-START=0
-END=255
+IP_PREFIX="94.249.211"
+START=39
+END=71
 PORT_START=3128
 USERNAME="vodkaace"
 PASSWORD="indonesia"
