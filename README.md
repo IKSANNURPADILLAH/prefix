@@ -26,6 +26,8 @@ network:
 ```
 ## Paste komen ini
 ```bash
+apt update
+apt install -y netplan.io
 sudo systemctl enable --now systemd-networkd
 sudo systemctl disable --now networking
 sudo systemctl disable --now NetworkManager
