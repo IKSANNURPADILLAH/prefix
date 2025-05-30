@@ -36,7 +36,7 @@ network:
                 - ghostnet.de
 EOF
 
-# IP alias (5.230.102.70-85 dan 94.249.211.39-71)
+# IP alias
 echo "Menambahkan IP alias ke $NETPLAN_ALIAS..."
 cat > $NETPLAN_ALIAS <<EOF
 network:
@@ -96,34 +96,25 @@ acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 EOF
 
-# Port + ACL + Outgoing IP untuk 5.230.102.x
+# Konfigurasi untuk 5.230.102.x
 for i in {70..85}; do
   echo "http_port 5.230.102.$i:3128" >> $SQUID_CONF
+  echo "acl ip102_$i myip 5.230.102.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 5.230.102.$i ip102_$i" >> $SQUID_CONF
 done
 
-for i in {70..85}; do
-  echo "acl ip$i myip 5.230.102.$i" >> $SQUID_CONF
-  echo "tcp_outgoing_address 5.230.102.$i ip$i" >> $SQUID_CONF
-done
-
-# Port + ACL + Outgoing IP untuk 94.249.211.x
+# Konfigurasi untuk 94.249.211.x
 for i in {39..71}; do
   echo "http_port 94.249.211.$i:3128" >> $SQUID_CONF
+  echo "acl ip211_$i myip 94.249.211.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 94.249.211.$i ip211_$i" >> $SQUID_CONF
 done
 
-for i in {39..71}; do
-  echo "acl ip94$i myip 94.249.211.$i" >> $SQUID_CONF
-  echo "tcp_outgoing_address 94.249.211.$i ip94$i" >> $SQUID_CONF
-done
-
-# Port + ACL + Outgoing IP untuk 94.249.211.x
+# Konfigurasi untuk 94.249.210.x
 for i in {104..112}; do
   echo "http_port 94.249.210.$i:3128" >> $SQUID_CONF
-done
-
-for i in {104..112}; do
-  echo "acl ip94$i myip 4.249.210.$i" >> $SQUID_CONF
-  echo "tcp_outgoing_address 4.249.210.$i ip94$i" >> $SQUID_CONF
+  echo "acl ip210_$i myip 94.249.210.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 94.249.210.$i ip210_$i" >> $SQUID_CONF
 done
 
 # Tambahan akhir konfigurasi
@@ -154,7 +145,7 @@ for i in {39..71}; do
   echo "http://$USER:$PASS@94.249.211.$i:3128" >> $PROXY_TXT
 done
 for i in {104..112}; do
-  echo "http://$USER:$PASS@4.249.210.$i:3128" >> $PROXY_TXT
+  echo "http://$USER:$PASS@94.249.210.$i:3128" >> $PROXY_TXT
 done
 
 # ========= RESTART SQUID =========
