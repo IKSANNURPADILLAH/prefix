@@ -3,7 +3,7 @@ set -e
 
 # === KONFIGURASI ===
 INTERFACE="eth0"
-PORT_START=3128
+PORT_START=3129
 USERNAME="vodkaace"
 PASSWORD="indonesia"
 PASSWD_FILE="/etc/squid/passwd"
