@@ -31,6 +31,8 @@ for idx in "${!PREFIXES[@]}"; do
   PREFIX="${PREFIXES[$idx]}"
   START="${STARTS[$idx]}"
   END="${ENDS[$idx]}"
+  NETMASK="${NETMASKS[$idx]}"
+
   for i in $(seq $START $END); do
     IP="$PREFIX.$i"
     ALIAS_CONF+="
@@ -55,7 +57,9 @@ echo "[+] Reload network interface (jika gagal, reboot manual)"
 if command -v ifreload &>/dev/null; then
   sudo ifreload -a || echo "[!] ifreload gagal, silakan reboot manual."
 else
-  echo "[!] ifreload tidak tersedia, silakan reboot manual."
+  echo "[!] ifreload tidak tersedia, coba restart manual:"
+  echo "    sudo ifdown $INTERFACE && sudo ifup $INTERFACE"
+  echo "    atau reboot VPS Anda."
 fi
 
 # === INSTALL SQUID + AUTH ===
@@ -70,18 +74,37 @@ else
   sudo htpasswd -b "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
 fi
 
+# Set permission file passwd agar squid bisa baca
+sudo chown proxy:proxy "$PASSWD_FILE"
+sudo chmod 640 "$PASSWD_FILE"
+
 # === BACKUP KONFIGURASI SQUID ===
 echo "[+] Backup squid.conf"
 sudo cp "$SQUID_CONF" "$SQUID_CONF.bak.$(date +%s)"
 
 # === TULIS KONFIGURASI SQUID BARU ===
 echo "[+] Menulis konfigurasi squid.conf"
+
 sudo tee "$SQUID_CONF" > /dev/null <<EOF
+# Minimal squid config with auth and multiple outgoing IP/ports
+
+# Default http_port untuk management/debug
+http_port 3128
+visible_hostname proxy-server
+
+# DNS
+dns_nameservers 8.8.8.8 8.8.4.4
+
+# Authentication
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
 auth_param basic realm Private Proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 
+# Default deny all
+http_access deny all
+
+# Logging
 access_log /var/log/squid/access.log
 cache_log /var/log/squid/cache.log
 cache_store_log none
