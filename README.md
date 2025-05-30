@@ -6,7 +6,7 @@ mkdir /etc/netplan
 chmod 600 /etc/netplan
 nano /etc/netplan/50-cloud-init.yaml
 ```
-## Isi dengan settiingan default, contohnya
+## Isi dengan settingan default, contohnya
 ```bash
 network:
     version: 2
