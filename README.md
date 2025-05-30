@@ -1,6 +1,8 @@
 # Cara ganti interface ke netplan
 
 ```bash
+apt update
+apt install -y netplan.io
 sudo mv /etc/network/interfaces /etc/network/interfaces.bak
 mkdir /etc/netplan
 chmod 600 /etc/netplan
