@@ -1,103 +1,119 @@
 #!/bin/bash
-set -e
-
-# === KONFIGURASI ===
+# === KONFIGURASI UMUM ===
 INTERFACE="eth0"
-PORT_START=3129
+PORT_START=3128
 USERNAME="vodkaace"
 PASSWORD="indonesia"
 PASSWD_FILE="/etc/squid/passwd"
 SQUID_CONF="/etc/squid/squid.conf"
 HASIL_FILE="hasil.txt"
+CONF_FILE="/etc/network/interfaces.d/proxy-ips.cfg"
 
-PREFIXES=("5.230.10" "94.249.210" "94.249.211")
-STARTS=(70 104 39)
-ENDS=(85 112 71)
-NETMASKS=("255.255.255.224" "255.255.255.0" "255.255.255.0")
+# === KONFIGURASI PREFIX MULTI ===
+PREFIXES=("94.249.210" "89.144.51")
+STARTS=(125 0)
+ENDS=(176 256)
+EXCLUDES=("125 126" "1 256")     # Dukung banyak IP per prefix
+NETMASKS=(24 24)                  # Sesuaikan /prefix-nya
 
-# === BACKUP interfaces utama dulu ===
-echo "[+] Backup /etc/network/interfaces"
-sudo cp /etc/network/interfaces /etc/network/interfaces.bak.$(date +%s)
+# === FUNGSI CEK EXCLUDE ===
+is_excluded() {
+    local num=$1
+    shift
+    local arr=("$@")
+    for ex in "${arr[@]}"; do
+        if [[ "$num" -eq "$ex" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
-# === BIKIN KONFIGURASI ALIAS ===
-ALIAS_CONF=""
-ALIAS_INDEX=1
-
-for idx in "${!PREFIXES[@]}"; do
-  PREFIX="${PREFIXES[$idx]}"
-  START="${STARTS[$idx]}"
-  END="${ENDS[$idx]}"
-  NETMASK="${NETMASKS[$idx]}"
-
-  for i in $(seq $START $END); do
-    IP="$PREFIX.$i"
-    ALIAS_CONF+="
-
-auto ${INTERFACE}:$ALIAS_INDEX
-iface ${INTERFACE}:$ALIAS_INDEX inet static
-    address $IP
-    netmask $NETMASK
-"
-    ALIAS_INDEX=$((ALIAS_INDEX+1))
-  done
-done
-
-# === TAMBAHKAN ALIAS KE /etc/network/interfaces TANPA GANGGU eth0 DEFAULT ===
-echo "[+] Menambahkan IP alias ke /etc/network/interfaces"
-echo "$ALIAS_CONF" | sudo tee -a /etc/network/interfaces > /dev/null
-
-# === RELOAD NETWORK ===
-echo "[+] Reload network interface (jika gagal, reboot manual)"
-if command -v ifreload &>/dev/null; then
-  sudo ifreload -a || echo "[!] ifreload gagal, silakan reboot manual."
-else
-  echo "[!] ifreload tidak tersedia, coba restart manual:"
-  echo "    sudo ifdown $INTERFACE && sudo ifup $INTERFACE"
-  echo "    atau reboot VPS Anda."
+# === CEK INTERFACE ===
+if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
+    echo "[!] Interface $INTERFACE tidak ditemukan." >&2
+    exit 1
 fi
 
-# === INSTALL SQUID + AUTH ===
-echo "[+] Instalasi squid dan apache2-utils"
+# === TAMBAHKAN IP KE INTERFACE SECARA LANGSUNG ===
+echo "[+] Menambahkan IP ke interface $INTERFACE (sementara)"
+for idx in "${!PREFIXES[@]}"; do
+    PREFIX="${PREFIXES[$idx]}"
+    START="${STARTS[$idx]}"
+    END="${ENDS[$idx]}"
+    IFS=' ' read -r -a EXCLUDE <<< "${EXCLUDES[$idx]}"
+    NETMASK="${NETMASKS[$idx]}"
+
+    for i in $(seq $START $END); do
+        if is_excluded "$i" "${EXCLUDE[@]}"; then
+            echo "[!] Melewati IP $PREFIX.$i (dikecualikan)"
+            continue
+        fi
+        IP="$PREFIX.$i"
+        if ! ip addr show dev $INTERFACE | grep -q "$IP"; then
+            sudo ip addr add "$IP/$NETMASK" dev $INTERFACE
+        fi
+    done
+done
+
+# === TAMBAHKAN IP PERMANEN KE KONFIGURASI ===
+echo "[+] Menulis IP permanen ke $CONF_FILE"
+sudo rm -f "$CONF_FILE"
+echo "auto lo" | sudo tee "$CONF_FILE" > /dev/null
+echo "iface lo inet loopback" | sudo tee -a "$CONF_FILE" > /dev/null
+echo "" | sudo tee -a "$CONF_FILE" > /dev/null
+echo "auto $INTERFACE" | sudo tee -a "$CONF_FILE" > /dev/null
+echo "iface $INTERFACE inet static" | sudo tee -a "$CONF_FILE" > /dev/null
+echo "    address 192.168.1.2" | sudo tee -a "$CONF_FILE" > /dev/null   # Ganti dengan IP utama kamu
+echo "    netmask 255.255.255.0" | sudo tee -a "$CONF_FILE" > /dev/null
+
+ALIAS_IDX=0
+for idx in "${!PREFIXES[@]}"; do
+    PREFIX="${PREFIXES[$idx]}"
+    START="${STARTS[$idx]}"
+    END="${ENDS[$idx]}"
+    IFS=' ' read -r -a EXCLUDE <<< "${EXCLUDES[$idx]}"
+    NETMASK="${NETMASKS[$idx]}"
+
+    for i in $(seq $START $END); do
+        if is_excluded "$i" "${EXCLUDE[@]}"; then
+            continue
+        fi
+        IP="$PREFIX.$i"
+        echo "" | sudo tee -a "$CONF_FILE" > /dev/null
+        echo "auto ${INTERFACE}:$ALIAS_IDX" | sudo tee -a "$CONF_FILE" > /dev/null
+        echo "iface ${INTERFACE}:$ALIAS_IDX inet static" | sudo tee -a "$CONF_FILE" > /dev/null
+        echo "    address $IP" | sudo tee -a "$CONF_FILE" > /dev/null
+        echo "    netmask 255.255.255.0" | sudo tee -a "$CONF_FILE" > /dev/null
+        ((ALIAS_IDX++))
+    done
+done
+
+# === INSTALL PAKET ===
+echo "[+] Menginstall Squid dan Apache utils"
 sudo apt update
 sudo apt install squid apache2-utils -y
 
-echo "[+] Setup user squid"
+# === SETUP AUTH USER ===
+echo "[+] Menambahkan user proxy $USERNAME"
 if [ ! -f "$PASSWD_FILE" ]; then
-  sudo htpasswd -cb "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
+    sudo htpasswd -cb "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
 else
-  sudo htpasswd -b "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
+    sudo htpasswd -b "$PASSWD_FILE" "$USERNAME" "$PASSWORD"
 fi
 
-# Set permission file passwd agar squid bisa baca
-sudo chown proxy:proxy "$PASSWD_FILE"
-sudo chmod 640 "$PASSWD_FILE"
-
-# === BACKUP KONFIGURASI SQUID ===
-echo "[+] Backup squid.conf"
+# === BACKUP KONFIGURASI LAMA ===
+echo "[+] Membackup konfigurasi Squid lama"
 sudo cp "$SQUID_CONF" "$SQUID_CONF.bak.$(date +%s)"
 
-# === TULIS KONFIGURASI SQUID BARU ===
-echo "[+] Menulis konfigurasi squid.conf"
-
+# === BUAT KONFIGURASI SQUID BARU ===
+echo "[+] Menulis konfigurasi baru ke $SQUID_CONF"
 sudo tee "$SQUID_CONF" > /dev/null <<EOF
-# Minimal squid config with auth and multiple outgoing IP/ports
-
-http_port 3128
-visible_hostname proxy-server
-
-# DNS
-dns_nameservers 8.8.8.8 8.8.4.4
-
-# Authentication
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
 auth_param basic realm Private Proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 
-# Default deny all
-http_access deny all
-
-# Logging
 access_log /var/log/squid/access.log
 cache_log /var/log/squid/cache.log
 cache_store_log none
@@ -107,52 +123,94 @@ dns_v4_first on
 
 EOF
 
-# === TAMBAH PORT DAN IP OUTGOING ===
 PORT_OFFSET=0
-: > "$HASIL_FILE"
-
 for idx in "${!PREFIXES[@]}"; do
-  PREFIX="${PREFIXES[$idx]}"
-  START="${STARTS[$idx]}"
-  END="${ENDS[$idx]}"
+    PREFIX="${PREFIXES[$idx]}"
+    START="${STARTS[$idx]}"
+    END="${ENDS[$idx]}"
+    IFS=' ' read -r -a EXCLUDE <<< "${EXCLUDES[$idx]}"
 
-  for i in $(seq $START $END); do
-    PORT=$((PORT_START + PORT_OFFSET))
-    IP="$PREFIX.$i"
+    for i in $(seq $START $END); do
+        if is_excluded "$i" "${EXCLUDE[@]}"; then
+            echo "[!] Melewati konfigurasi untuk IP $PREFIX.$i"
+            continue
+        fi
 
-    echo "http_port $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
-    echo "acl to$PORT myport $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
-    echo "tcp_outgoing_address $IP to$PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
-    echo "" | sudo tee -a "$SQUID_CONF" > /dev/null
+        PORT=$((PORT_START + PORT_OFFSET))
+        IP="$PREFIX.$i"
 
-    echo "$USERNAME:$PASSWORD:$IP:$PORT" >> "$HASIL_FILE"
-    PORT_OFFSET=$((PORT_OFFSET + 1))
-  done
+        echo "http_port $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
+        echo "acl to$PORT myport $PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
+        echo "tcp_outgoing_address $IP to$PORT" | sudo tee -a "$SQUID_CONF" > /dev/null
+        echo "" | sudo tee -a "$SQUID_CONF" > /dev/null
+
+        PORT_OFFSET=$((PORT_OFFSET + 1))
+    done
 done
 
-# === BUKA PORT DI FIREWALL UFW (JIKA PERLU) ===
-if command -v ufw &>/dev/null && sudo ufw status | grep -q "Status: active"; then
-  echo "[+] Membuka port proxy di UFW"
-  for ((p=PORT_START; p<PORT_START+PORT_OFFSET; p++)); do
-    sudo ufw allow "$p/tcp"
-  done
+# === BUKA FIREWALL JIKA PERLU ===
+if command -v ufw > /dev/null && sudo ufw status | grep -q "Status: active"; then
+    echo "[+] Membuka port di firewall (UFW)"
+    for ((p=PORT_START; p<PORT_START+PORT_OFFSET; p++)); do
+        sudo ufw allow "$p/tcp" comment "Allow Squid proxy port $p"
+    done
 fi
 
-# === SYSTEMD LIMIT ===
-echo "[+] Set limit file descriptor squid"
+# === SIMPAN KE FILE HASIL ===
+echo "[+] Menyimpan hasil konfigurasi ke $HASIL_FILE"
+: > "$HASIL_FILE"
+
+PORT_OFFSET=0
+for idx in "${!PREFIXES[@]}"; do
+    PREFIX="${PREFIXES[$idx]}"
+    START="${STARTS[$idx]}"
+    END="${ENDS[$idx]}"
+    IFS=' ' read -r -a EXCLUDE <<< "${EXCLUDES[$idx]}"
+
+    for i in $(seq $START $END); do
+        if is_excluded "$i" "${EXCLUDE[@]}"; then
+            continue
+        fi
+
+        PORT=$((PORT_START + PORT_OFFSET))
+        IP="$PREFIX.$i"
+        echo "$USERNAME:$PASSWORD:$IP:$PORT" >> "$HASIL_FILE"
+        PORT_OFFSET=$((PORT_OFFSET + 1))
+    done
+done
+
+# === SETUP LIMIT SYSTEMD ===
 sudo mkdir -p /etc/systemd/system/squid.service.d
 cat <<EOF | sudo tee /etc/systemd/system/squid.service.d/override.conf
 [Service]
 LimitNOFILE=65535
 EOF
 
-# === RESTART SQUID ===
-echo "[+] Restarting squid"
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl restart squid
+# === RESTART SQUID DENGAN ANIMASI ===
+echo "[+] Restarting Squid"
+echo -n "Loading"
+loading_animation() {
+    local pid=$1
+    local delay=0.1
+    local spin='|/-\'
+    while ps -p $pid > /dev/null; do
+        for i in $(seq 0 3); do
+            echo -ne "\rLoading ${spin:$i:1}"
+            sleep $delay
+        done
+    done
+    echo -ne "\r[+] Restart Squid Done     \n"
+}
 
-echo ""
-echo "✅ Proxy setup selesai!"
-echo "📄 Proxy list ada di file: $HASIL_FILE"
-echo "⚠️ Jika IP alias belum aktif, silakan reboot VPS Anda."
+(
+    sudo systemctl daemon-reexec
+    sudo systemctl daemon-reload
+    sudo systemctl restart squid
+) &
+loading_animation $!
+
+echo "Cek limit file descriptor Squid:"
+cat /proc/$(pidof squid)/limits | grep "Max open files"
+echo "✅ Setup selesai! Proxy siap digunakan."
+echo "📄 Hasil disimpan di: $HASIL_FILE"
+echo "💾 IP permanen tersimpan di: $CONF_FILE"
