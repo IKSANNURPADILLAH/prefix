@@ -1,9 +1,13 @@
-change interface to netplan
+# Cara ganti interface ke netplan
 
+```bash
 sudo mv /etc/network/interfaces /etc/network/interfaces.bak
 mkdir /etc/netplan
 chmod 600 /etc/netplan
 nano /etc/netplan/50-cloud-init.yaml
+```
+## Isi dengan settiingan default, contohnya
+```bash
 network:
     version: 2
     ethernets:
@@ -19,8 +23,11 @@ network:
                 - 8.8.8.8
                 search:
                 - ghostnet.de
-
+```
+## Paste komen ini
+```bash
 sudo systemctl enable --now systemd-networkd
 sudo systemctl disable --now networking
 sudo systemctl disable --now NetworkManager
 sudo netplan apply
+```
