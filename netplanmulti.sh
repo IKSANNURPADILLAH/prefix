@@ -56,6 +56,11 @@ for i in {39..71}; do
   echo "      - 94.249.211.$i/24" >> $NETPLAN_ALIAS
 done
 
+# IP dari subnet 94.249.210.0/24
+for i in {104..112}; do
+  echo "      - 94.249.210.$i/24" >> $NETPLAN_ALIAS
+done
+
 chmod 600 $NETPLAN_ALIAS
 netplan apply
 
@@ -111,6 +116,16 @@ for i in {39..71}; do
   echo "tcp_outgoing_address 94.249.211.$i ip94$i" >> $SQUID_CONF
 done
 
+# Port + ACL + Outgoing IP untuk 94.249.211.x
+for i in {104..112}; do
+  echo "http_port 94.249.210.$i:3128" >> $SQUID_CONF
+done
+
+for i in {104..112}; do
+  echo "acl ip94$i myip 4.249.210.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 4.249.210.$i ip94$i" >> $SQUID_CONF
+done
+
 # Tambahan akhir konfigurasi
 cat >> $SQUID_CONF <<EOF
 
@@ -137,6 +152,9 @@ for i in {70..85}; do
 done
 for i in {39..71}; do
   echo "http://$USER:$PASS@94.249.211.$i:3128" >> $PROXY_TXT
+done
+for i in {104..112}; do
+  echo "http://$USER:$PASS@4.249.210.$i:3128" >> $PROXY_TXT
 done
 
 # ========= RESTART SQUID =========
