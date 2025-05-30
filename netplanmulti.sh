@@ -46,9 +46,9 @@ network:
       addresses:
 EOF
 
-# IP dari subnet 5.230.102.0/24
+# IP dari subnet 5.230.102.0/27
 for i in {70..85}; do
-  echo "      - 5.230.102.$i/24" >> $NETPLAN_ALIAS
+  echo "      - 5.230.102.$i/27" >> $NETPLAN_ALIAS
 done
 
 # IP dari subnet 94.249.211.0/24
