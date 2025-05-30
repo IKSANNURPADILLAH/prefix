@@ -24,10 +24,10 @@ network:
     ethernets:
         eth0:
             addresses:
-            - 5.230.233.139/24
+            - 5.230.159.9/24
             routes:
               - to: 0.0.0.0/0
-                via: 5.230.233.1
+                via: 5.230.159.1
                 on-link: true
             nameservers:
                 addresses:
@@ -36,7 +36,7 @@ network:
                 - ghostnet.de
 EOF
 
-# IP alias (94.249.215.2 - 254)
+# IP alias (94.249.211.39 - 71)
 echo "Menambahkan IP alias ke $NETPLAN_ALIAS..."
 cat > $NETPLAN_ALIAS <<EOF
 network:
@@ -46,8 +46,8 @@ network:
       addresses:
 EOF
 
-for i in {2..254}; do
-  echo "      - 94.249.215.$i/24" >> $NETPLAN_ALIAS
+for i in {39..71}; do
+  echo "      - 94.249.211.$i/24" >> $NETPLAN_ALIAS
 done
 
 chmod 600 $NETPLAN_ALIAS
@@ -82,13 +82,13 @@ http_access allow authenticated
 EOF
 
 # Port dan IP keluar
-for i in {2..254}; do
-  echo "http_port 94.249.215.$i:3128" >> $SQUID_CONF
+for i in {39..71}; do
+  echo "http_port 94.249.211.$i:3128" >> $SQUID_CONF
 done
 
-for i in {2..254}; do
-  echo "acl ip$i myip 94.249.215.$i" >> $SQUID_CONF
-  echo "tcp_outgoing_address 94.249.215.$i ip$i" >> $SQUID_CONF
+for i in {39..71}; do
+  echo "acl ip$i myip 94.249.211.$i" >> $SQUID_CONF
+  echo "tcp_outgoing_address 94.249.211.$i ip$i" >> $SQUID_CONF
 done
 
 # Tambahan konfigurasi ringan
@@ -108,8 +108,8 @@ EOF
 
 echo "Menyimpan daftar proxy ke $PROXY_TXT..."
 > $PROXY_TXT
-for i in {2..254}; do
-  echo "http://$USER:$PASS@94.249.215.$i:3128" >> $PROXY_TXT
+for i in {39..71}; do
+  echo "http://$USER:$PASS@94.249.211.$i:3128" >> $PROXY_TXT
 done
 
 # ========= RESTART SQUID =========
