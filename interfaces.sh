@@ -19,10 +19,6 @@ NETMASKS=("255.255.255.224" "255.255.255.0" "255.255.255.0")
 echo "[+] Backup /etc/network/interfaces"
 sudo cp /etc/network/interfaces /etc/network/interfaces.bak.$(date +%s)
 
-# === AMBIL BAGIAN KONFIGURASI UTAMA eth0 ===
-echo "[+] Menyiapkan konfigurasi interfaces baru"
-awk '/^iface eth0 inet static/ {print; getline; while ($0 ~ /^\s+/) {print; getline} exit}1' /etc/network/interfaces > interfaces.main
-
 # === BIKIN KONFIGURASI ALIAS ===
 ALIAS_CONF=""
 ALIAS_INDEX=1
@@ -46,11 +42,9 @@ iface ${INTERFACE}:$ALIAS_INDEX inet static
   done
 done
 
-# === TULIS interfaces baru ===
-echo "[+] Menulis konfigurasi interfaces baru"
-echo "$(<interfaces.main)" | sudo tee /etc/network/interfaces > /dev/null
+# === TAMBAHKAN ALIAS KE /etc/network/interfaces TANPA GANGGU eth0 DEFAULT ===
+echo "[+] Menambahkan IP alias ke /etc/network/interfaces"
 echo "$ALIAS_CONF" | sudo tee -a /etc/network/interfaces > /dev/null
-rm interfaces.main
 
 # === RELOAD NETWORK ===
 echo "[+] Reload network interface (jika gagal, reboot manual)"
@@ -88,7 +82,6 @@ echo "[+] Menulis konfigurasi squid.conf"
 sudo tee "$SQUID_CONF" > /dev/null <<EOF
 # Minimal squid config with auth and multiple outgoing IP/ports
 
-# Default http_port untuk management/debug
 http_port 3128
 visible_hostname proxy-server
 
@@ -137,7 +130,7 @@ for idx in "${!PREFIXES[@]}"; do
   done
 done
 
-# === BUKA PORT DI FIREWALL UFW ===
+# === BUKA PORT DI FIREWALL UFW (JIKA PERLU) ===
 if command -v ufw &>/dev/null && sudo ufw status | grep -q "Status: active"; then
   echo "[+] Membuka port proxy di UFW"
   for ((p=PORT_START; p<PORT_START+PORT_OFFSET; p++)); do
