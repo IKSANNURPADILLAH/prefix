@@ -31,3 +31,4 @@ sudo systemctl disable --now networking
 sudo systemctl disable --now NetworkManager
 sudo netplan apply
 ```
+## Silahkan reboot manual
