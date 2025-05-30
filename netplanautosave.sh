@@ -36,7 +36,7 @@ network:
                 - ghostnet.de
 EOF
 
-# IP alias (94.249.191.2 - 254)
+# IP alias (89.144.48.2 - 254)
 echo "Menambahkan IP alias ke $NETPLAN_ALIAS..."
 cat > $NETPLAN_ALIAS <<EOF
 network:
