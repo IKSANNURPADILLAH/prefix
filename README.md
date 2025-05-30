@@ -1,0 +1,26 @@
+change interface to netplan
+
+sudo mv /etc/network/interfaces /etc/network/interfaces.bak
+mkdir /etc/netplan
+chmod 600 /etc/netplan
+nano /etc/netplan/50-cloud-init.yaml
+network:
+    version: 2
+    ethernets:
+        eth0:
+            addresses:
+            - 5.230.159.9/24
+            routes:
+              - to: 0.0.0.0/0
+                via: 5.230.159.1
+                on-link: true
+            nameservers:
+                addresses:
+                - 8.8.8.8
+                search:
+                - ghostnet.de
+
+sudo systemctl enable --now systemd-networkd
+sudo systemctl disable --now networking
+sudo systemctl disable --now NetworkManager
+sudo netplan apply
