@@ -15,6 +15,7 @@ http_access allow authenticated
 http_access deny all
 
 http_port 3128
+http_port 3129
 
 access_log /var/log/squid/access.log
 
