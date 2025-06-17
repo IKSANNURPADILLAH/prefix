@@ -43,6 +43,6 @@ systemctl enable squid
 
 # Buka port 3128 di firewall
 ufw allow 3128/tcp
-
+ufw allow 3129/tcp
 echo "http://vodkaace:indonesia@$(curl -s ipinfo.io/ip):3128"
 echo "http://vodkaace:indonesia@$(curl -s ipinfo.io/ip):3129"
