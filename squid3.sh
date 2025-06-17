@@ -45,4 +45,4 @@ systemctl enable squid
 ufw allow 3128/tcp
 
 echo "http://vodkaace:indonesia@$(curl -s ipinfo.io/ip):3128"
-
+echo "http://vodkaace:indonesia@$(curl -s ipinfo.io/ip):3129"
