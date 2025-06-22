@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# === Konfigurasi dasar ===
+USER="vodkaace"
+PASS="indonesia"
+SQUID_CONF="/etc/squid/squid.conf"
+PASS_FILE="/etc/squid/passwd"
+START_PORT=3001
+
+# === Pastikan curl terinstal ===
+apt update && apt install -y curl
+
+# === Ambil IP publik utama ===
+MAIN_IP=$(curl -s ifconfig.me)
+LOG_FILE="proxylist-$MAIN_IP.txt"
+
+# === Telegram Config ===
+BOT_TOKEN="7693985177:AAHhONkMCUpglJNVIJlq6TSNLQi7scmauuY"
+CHAT_ID="6325391304"
+
+# === Deteksi IP publik dari interface lokal ===
+IP_LIST=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v -E '127\.|172\.1[6-9]\.|172\.2[0-9]\.|172\.3[0-1]\.|192\.168\.|10\.')
+IFS=$'\n' read -rd '' -a IPS <<<"$IP_LIST"
+
+# === Validasi apakah IP publik ditemukan ===
+if [ ${#IPS[@]} -eq 0 ]; then
+  echo "❌ Tidak ditemukan IP publik dari interface. Pastikan server menggunakan IP publik langsung."
+  exit 1
+fi
+
+# === Bersihkan hasil sebelumnya ===
+> $LOG_FILE
+
+# === Instalasi dependensi lainnya ===
+apt install -y squid apache2-utils ufw
+
+# === Setup autentikasi ===
+htpasswd -cb $PASS_FILE $USER $PASS
+
+# === Backup dan konfigurasi ulang squid.conf ===
+cp $SQUID_CONF ${SQUID_CONF}.bak
+
+cat > $SQUID_CONF <<EOF
+auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASS_FILE
+auth_param basic realm Proxy
+acl authenticated proxy_auth REQUIRED
+http_access allow authenticated
+acl localnet src 0.0.0.0/0
+http_access allow localnet
+http_access deny all
+access_log /var/log/squid/access.log
+EOF
+
+# === Tambahkan konfigurasi IP dan port ===
+PORT=$START_PORT
+for IP in "${IPS[@]}"; do
+  for i in {1..3}; do
+    echo "http_port $PORT" >> $SQUID_CONF
+    echo "acl port$PORT myportname $PORT" >> $SQUID_CONF
+    echo "tcp_outgoing_address $IP port$PORT" >> $SQUID_CONF
+    echo "http://$USER:$PASS@$IP:$PORT" >> $LOG_FILE
+    ((PORT++))
+  done
+done
+
+# === Override LimitNOFILE ===
+mkdir -p /etc/systemd/system/squid.service.d
+cat > /etc/systemd/system/squid.service.d/override.conf <<EOF
+[Service]
+LimitNOFILE=65535
+EOF
+
+# === Restart dan aktifkan Squid ===
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl restart squid
+systemctl enable squid
+
+# === Buka port di firewall ===
+ufw allow $START_PORT:$((PORT-1))/tcp
+
+# === Kirim file ke Telegram ===
+curl -s -F document=@"$LOG_FILE" "https://api.telegram.org/bot$BOT_TOKEN/sendDocument?chat_id=$CHAT_ID" > /dev/null
+
+echo "✅ Selesai. Proxy aktif dan daftar dikirim ke Telegram!"
+cat $LOG_FILE
